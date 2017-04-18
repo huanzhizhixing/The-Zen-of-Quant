@@ -33,8 +33,9 @@ PS G:\rqalpha-master> python
 
 #没有报错，可行
 
-
-
+#看源码
+import string
+string.__file__
 
 
 
