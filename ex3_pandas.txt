@@ -1,0 +1,312 @@
+
+pandas
+
+pandas的序列和表格引入
+import pandas as pd
+import Seires, DataFrame form pandas
+
+一、Series
+
+1.Series创建及属性
+#Seires的首字母要大写
+obj=Series([4,7,-5,3])
+obj.values
+obj.index
+或
+obj2=Series([4,1,5,4],index=['a','b','c','d'])
+
+2.索引选值
+选单独一个值
+obj2['a']
+按顺序选不同的值
+obj2[['c','a','d']]#这里是有两个中括号，类似花式索引。
+
+3.基本数值运算，np结合
+obj2[obj2>0];obj2*2;
+np.exp(obj2)
+'b' in obj2
+
+4.检查缺失值
+pd.isnull(obj)
+pd.notnull(obj)
+
+5.自动根据索引运算
+obj3+obj2
+
+6.为列及其索引起名
+obj4.name = 'population'
+obj.index.name='state'
+
+二、DataFrame
+#有两处大写
+
+1.构建DataFrame
+数据、列名、索引
+frame=DataFrame(data,column=['year','state','pop','debt'],index=['one','two','three','five'])
+
+2.查询列
+frame.year
+frame['year']
+
+3.属性
+frame.column
+frame.values返回一个ndarray的二维数组。
+
+
+4.嵌套字典，外层字典的键作为列，内层字典作为行
+pop={'nevada':{2001:2.4,2002:2.9},'ohio':{2000:1.5,2001:2.7}}
+frame=DataFrame(pop)
+
+5.命名
+frame.index.name='year';frame.column.name='state'
+
+6.添加新的列
+为不存在的列赋值会创建出一个新列，关键词del用于删除列。
+创建一个叫eastern的列，内容是True和False，判断state里是否严格等于Ohio
+frame['eastern'] = frame.state =='Ohio'
+
+三、索引
+索引是针对轴标签的，包括列标签和行标签。
+构建DataFrame或Series时，所用到的任何数组或其他序列的标签都会被转化为一个Index。
+Index对象是不能修改的。
+索引的值可以是重复的。
+
+1.确定索引列
+obj = Series(range(3),index=['a','b','c'])
+index = obj.index
+
+2.重建索引reindex
+obj=obj.reindex(['c','b','a','d'],fill_value=0)
+#在空值中填充0
+#默认是copy，无论如何都复制；如果是False，则新旧相等就不复制。
+
+3.对于时间序列类有序数据，进行插值处理，method。
+obj3=Series(['blue','purple','yellow'],index=[0,2,4])
+obj3.reindex(range(6),method='ffill')
+#ffill为前向填充，bfill为后向填充
+
+4.丢弃某轴上的一个或多个项
+drop
+obj.drop('c');obj.drop(['a','b'])
+
+5.索引的选取和过滤
+data=DataFrame(np.arange(16).reshape((4,4)),
+				index=['Ohio','Colorado','Utah','New York']
+				column=['one','two','three',four'])
+				
+	5.1可以直接按照名字索引（选取列）
+	data['two'];data[['three','four']]
+
+	5.2按照切片
+	data[:2],data[['three','one']]
+	#自己加的data[[:],[:2]]
+
+	5.3按照某一项的大小值
+	data[data['three']>5]
+	
+6.ix索引
+可以通过np类标记法以及轴标签从DataFrame中选取行和列的子集。
+
+7.选取有名称的列和行
+data.ix['Colorado',['two',three']]
+
+8.选取名称及列标位置
+data.ix[['Colorado','Utah'],[3,0,1]]
+#此为选取后，又按位置排序
+
+9.只有一个量，则为行
+data.ix[2]
+
+10.选取符合某条件的值
+data.ix[data.three>5,:3]
+#这是行选取three列中大于5的，列选取前3列。
+
+11.选取某一行前所有值，以及一个特定列
+data.ix[:'Utah','two']
+
+
+四、数值计算
+对不同对象进行算术运算，如果存在不同的索引对，则结果的索引就是该索引对的并集。
+
+1.直接相加
+s1+s2
+
+2.利用函数相加，填充值
+df1.add(df2,fill_value=0)
+#其他，sub - ，div / ，mul * 。
+
+3.DF和S运算，则会广播
+arr=np.arange(12.).reshape((3,4))
+arr - arr[0]#会对每一行都进行运算，称为广播。
+
+4.如果想要在列上运算，需要指定轴
+frame.sub(series3,axis=0)#指定按照列的形式进行运算。
+
+5.NumPy的函数同样可以用于操作pandas对象
+np.abs(frame)
+
+6.将函数应用到各行各列的数组上
+#用apply函数
+f = lambda x : x.max() - x.min()
+frame.apply(f)#默认在每一列上运算。
+frame.apply(f,axis=1）#这样是在每一行上运算。
+
+7.传递给apply的函数还可以返回由多个值构成的Series
+def f(x):
+	return Series([x.min(),x.max()],index=['min','max'])
+	
+frame.apply(f)
+#这里定义的函数是f(x),而apply里只要输入f就行了
+
+8.格式化整个字符串值，applymap
+format=lambda x: '%.2f' % x
+frame.applymap(format)
+将所有的都转换为两位小数。
+
+9.索引排序和排名
+obj.sort_index()
+#默认首先对行排序，指定axis=1时，才对列排序
+frame.sort_index()#对行排序
+frame.sort_index(axis=1)#对列排序
+
+10.按内部值排序
+Seires如果按值排序，就是order
+obj.order()
+DataFrame是将一个或多个列的名字传递给by选项达到此目的
+frame=DataFrame({'b':[4,7,-3,2],'a':[9,3,1,4]})
+frame.sort_index(by='b')
+多个列则传入列表
+frame.sort_index(by=['a','b'])
+
+11.排序，并给出排列位次rank
+obj.rank()#可能出现小数，因为有重复
+obj.rank(method='first')#first要加引号。同等时，按照谁先出现的顺序排名。
+frame.rank(axis=1)#在行上进行排名
+
+五、描述统计
+
+1.统计总和和均值
+df.mean(axis=1,skipna=False)
+相加sum()； 间接统计达到最大值和最小值的索引idxmax()、idxmin() ;逐行相加 cumsum()
+skew()偏度，kurt()峰度
+
+2.describe一次性产生多个汇总统计
+df.describe 包含计数、均值反差、最大最小、中位数等
+#对于非数值型数据，会产生另一种统计
+
+3.相关系数和协方差
+returns=price.pct_change()#价格百分比变化值
+3.1计算两个列 MSFT 和 IBM 的协方差
+returns.MSFT.corr(returns.IBM)
+3.2可以利用corr返回相关系数矩阵、cov返回协方差矩阵。
+3.3利用corrwith()可以计算DF和另一个S的相关性
+returns.corrwith(returns.IBM)
+
+4.唯一值
+obj.unique()
+
+
+六、处理缺失数据
+pandas用NaN（not a number）来表示缺失数据，有np.nun,none。
+
+1.四种方法
+dropna,返回一个仅含非空数据和索引值的Series。如果是dropna(how='all')则仅丢弃全是NA的那些行。
+fillna，用插值的方法填充数据。
+isnull,返回一个含有布尔值的对象，表示哪些值是NA
+notnull，isnull的否定式。
+
+2.fillna将缺失值替换为常数值
+#将所有的NaN填充为0
+df.fillna(0)
+#对1、2列填充不同的值
+df.fillna({1:0.2,2:0.4})
+#向前填充
+df.fillna(method='ffill')
+df.fillna(method='ffill',limit=2)
+#这里还有axis选项，可以选择不同的轴填充。
+
+七、更多索引
+
+1.层次化索引
+能在一个轴上拥有多个索引级别，以低维形式处理高维数据。
+data=Seires(np.random.randn(6),
+			index=[['a','a','a','b','b','b'],[1,2,3,1,2,3]])
+data.index			
+data['b']
+data.ix[['a','b']]
+
+2.层次化索引在数据重塑和基于分组的操作（如数据透视表生成）中扮演着重要的角色。
+比如，可以用unstack重新放在一个数据表中。（unstack是把行上两个索引，分一个到列上，被分的是第二个（内层索引））
+data.unstack()
+stack()是逆运算。data.unstack().stack()#这里两个都要带括号。
+
+3.每个轴都可以有索引。但是，不要将索引名称跟轴标签混为一谈！
+索引名是针对索引列的，而轴标签是轴的列！
+
+4.重新分级sortlevel(不懂)
+
+5.在DataFrame里使用set_index可以把一个或多个列转换为行索引，并创建一个新的DataFrame
+frame2 = frame.set_index(['c','d'])#如果输入drop=False，那么这些列会保留下来。
+如果使用reset_index,那么层次化索引级别会被转移到列里面。
+
+6.面板数据
+方法1：由高维降下来，比如三维里指定某一个项。
+pdata.ix[:,'6/1/2012',:]
+pdata.ix['Adj Close','5/22/2012':,:]
+方法2：堆积放
+stacked=pdata.ix[:,'5/30/2012':,:].to_frame()
+#这里to后面有一个横杠
+to_panel是to_frame的逆运算。
+
+
+八、数据加载与存储
+磁盘存储文件、数据库文件、web app文件
+
+1.read_csv 读取默认以逗号分隔的csv文件
+df=pd.read_csv('ch06/ex1.csv')
+pd.read_csv('ch06/ex1.csv',index_col='a']
+#作为索引的是a这一列。
+pd.read_csv('ch06/ex1.csv',nrow=5]
+#逐块读取，只读取5列
+
+2.to_csv 写入csv文件
+data.to_csv('ch06/out.csv')
+
+3.读取JSON数据
+import json
+result=json.loads(obj)
+#json.dumps则将python对象转换成JSON格式：
+asjson=json.dumps(result)
+
+4.读取web信息
+（暂略）
+
+5.使用数据库
+import sqlite3
+query = """
+CREATE TABLE test
+(a VARCHAR(20), b VARCHAR(20),
+c REAL, d INTEGER
+);"""
+con=sqlites.connect(':memory:')
+con.execute(query)
+con.commit()
+
+data=[('Atlanta','Georgia',1.25,6),
+		('Tallahassee','Florida',2.6,3)
+		('Sacramento','California',1.7,5)
+stmt="INSERT INTO test VALUES(?,?,?,?)"#这是什么意思？
+con.executemany(stmt,data)
+con.commit()
+
+cursor=con.execute('select * form test')
+rows=cursor.fetchall()
+rows
+
+cursor.description
+DataFrame(rows,column=zip(*cursor.description)[0])
+
+6.简化读取数据的模块
+import pandas.io.sql as sql
+sql.read_frame('select * from test',con)
+
