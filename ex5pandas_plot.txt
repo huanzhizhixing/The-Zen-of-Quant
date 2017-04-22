@@ -1,0 +1,65 @@
+pandas的绘图
+pandas给精简了很多参数，直接用
+
+一、线形图
+1.Series绘图
+s=Series(np.random.randn(10).cumsum(),index=np.arange(0,100,10))
+s.plot()#可以直接用了
+
+主要参数：
+lable:图例标签； kind：绘图种类line、bar、barh、kde
+logy：在y上使用对数  grid：显示轴网格线（默认打开）
+xticks：用作x轴刻度的值；xlim：用作x轴的界限（例如[0,10]）
+yticks: 用作y轴刻度的值；ylim：用作y轴的界限。
+
+2.DataFrame绘图
+df=DataFrame(np.random.randn(10,4).comsum(),
+			columns=['A','B','C','D'],
+			index=np.arange(0,100,10))			
+df.plot()
+
+主要参数：
+subplots:将各个DataFrame列绘制到单独的subplot中
+sharex：共用一个x轴；sharey：共用y轴
+figsize：图像大小
+title图像标题字符串
+legend：添加一个subplot图例
+sort_columns:以字母表顺序绘制各列
+
+
+二、柱状图
+1.Series
+kind='bar';kind='barh'
+data.plot(kind='bar',ax=axes[0],coler='k',alpha=0.7)
+
+2.DataFrame
+df.plot(kind='bar')
+#使用stacked=True可为DataFrame生成堆积柱状图
+df.plot(kind='barh',stacked=True,alpha=0.5)
+
+3.使用s.value_counts().plot(kind='bar')显示Series中各值出现的频率
+party_counts = pd.crosstab(tips.day,tips.size)
+party_counts=party_counts.ix[:,2:5]
+#注意！这里必须转换成浮点值，以防2.7中的整数除法问题
+party_pcts=party_counts.div(party_counts.sum(1).astype(float),axis=0)
+party_pcts.plot(kind='bar',stacked=True)
+
+
+三、直方图和密度图
+直方图：对值频率进行离散化显示的柱状图。数据点被拆分到离散的、间隔均匀的面元中，绘制的是各面元中数据点的数量。
+tips['tip_pct']=tips['tip']/tips['total_bill']
+tips['tip_pct'].hist(bins=50)
+密度图：通过计算可能会产生预测数据的连续概率分布的估计而产生。一般是将该分布近似为一组核（如高斯分布等），因此密度图也被成为KDE，核密度估计。
+调用时，用plot时，加上 kind=‘kde’
+tips['tip_pct'].plot(kind='kde')
+这两种图表经常画在一起，直方图以规格化形式给出（一边给出面元化密度），然后再在其上绘制核密度估计。
+
+
+四、散布图
+散布图是观察两个一维数据之间关系的有效手段。
+plt.scatter(trans_data['m1'],trans_data['unemp']
+plt.title('Changes in log %s vs. log %s' % ('m1','unemp'))
+
+
+五、绘制地图
+
