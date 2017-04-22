@@ -204,26 +204,25 @@ aapl_px.plot(style='k-',ax=axes[1])
 ewma60.plot(style='k--',as=axes[1])
 axes[1].set_title('Exponentially-weighted MA')
 
+
 五、进阶
 
 1.二元移动窗口
-
-
-
+计算相关系数
+#单只股票
+corr=pd.rolling_mean(returns.AAPL,spx_rets,125,min_periods=100)
+#多只股票
+corr=pd.rolling_mean(returns,spx_rets,125,min_periods=100)
 
 2.自定义窗口
-
-
-
+rolling_apply产生自设数组函数，要求为能从数组的各个片段中产生单个值。
+计算AAPL2%回报率的百分等级
+from scipy.stats import percentileofscore
+score_at_2percent = lambda x: percentileofscore(x,0.02)
+result=pd.rolling_apply(returns.AAPL,250,score_at_2percent)
+result.plot()
 
 3.性能及内存
-
-
-
-
-
-
-
-
+视图和低频率数据的运算进行了很大的优化，能用pandas尽量用pandas。
 
 
