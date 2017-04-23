@@ -1,0 +1,200 @@
+
+金融数据应用
+处理金融数据时，最费神的一个问题是“数据对齐”，MATLAB和R需要花大量时间来对齐数据。
+pandas还能在算术中自动对齐数据。
+
+一、相乘和合并
+1.两个DF相乘，拥有相同的index和columns
+prices * volume
+
+2.通过一组索引不同的Series构建DF
+s1,s2,s3分别为Series，index是通过list把face拆开
+DataFrame({'one':s1,'two':s2,'three':s3},index=list('face'))
+
+3.Q-DEC\Q-SEP\Q-FEB
+Q-DEC,12月底为年度结尾
+Q-SEP,9月底为年度结尾
+Q-FEB,2月底为年度结尾
+
+
+二、resample和reindex,at_time
+1.频率不同的时间序列运算resample和reindex
+resample将数据转换到固定频率
+reindex使数据符合一个新的索引
+
+2.resample由低频到高频
+ts1=Series(np.random.randn(3),index=pd.date_range('2012-6-13',periods=3,freq='W-WED'))
+ts1.resample('B')
+ts1.resample('B',fill_method='fill')
+
+3.使用reindex变换一个表的索引
+ts2是一个表，里面索引与ts1不一样。想要把ts1索引弄成跟ts2一致。
+ts1.reindex(ts2.index,method='ffill')
+#含义是ts1索引变换成ts2的，取值是向前填充。
+ts2+ts1.reindex(ts2.index,method='ffill')
+#随后可以用ts2和ts1运算了
+
+4.转换计算年度数据和季度数据
+gdp为季度数据，infl为年度数据，将infl转换为与gdp相同的高频数据
+而gdp是Q-SEP格式的，12月底的表示为13Q1
+gdp=Series([1.78,1.94,2.08,2.01,2.15,2.31,2.46],index=pd.periods_range('1984Q2',periods=7,freq='Q-SEP'))
+infl=Series([0.025,0.045,0.037,0.04],index=pd.periods_range('1984',periods=4,freq='A-DEC'))
+#先把infl转换成季度数据，然后再重建索引并前向填充
+infl_q=infl.asfreq('Q-SEP',how='end')
+infl_q=reindex(gdp.index,method='ffill')
+
+5.抽取固定时间点的数据at_time
+from datetime import time
+ts[time(10,0)]
+ts.at_time(time(10,0))
+#between_time，选取两个时间点之间的数据
+ts.between_time(time(10,0),time(10,1))
+
+三、拼接多个数据源、收益率
+
+1.在特定时间点上，从一个数据源切换到另一个数据源上.concat
+spliced=pd.concat([data1.ix[:'2012-06-14'],data2.ix['2012-06-15':]])
+
+2.用另一个时间序列对当前时间序列中的缺失值“打补丁”。conbime_first
+spliced_filled = spliced.conbime_first(data2)
+#用data2里的数据填充spliced里的缺失值。
+
+update来就地更新
+spliced.update(data2,overwrite=False)
+
+用索引填充
+cp_spliced[['a','c']]=data1[['a','c']]
+
+3.收益率和累计收益cumprod
+return=price.pct_change()
+ret_index=(1+returns).cumprod()
+#这里的ret_index并不是index，而是一个Series
+ret_index[0]=1
+ret_index
+#计算制定时期的收益率
+m_returns=ret_index.resample('BM',how='last').pct_change()
+m_returns['2012']
+
+#或者通过重采样聚合
+m_rets=(1+returns).resample('M',how='prod',kind='periods')-1
+
+#将股息率加到每日收益率里
+returns[dividend_dates]+=dividend_pcts
+
+
+四、分组变换和分析
+利用数据集进行分组变换分析
+生成随机投资组合
+
+1.首先随机生成1000个股票代码
+import random ;
+#seed( ) 用于指定随机数生成时所用算法开始的整数值，如果使用相同的seed( )值，则每次生成的随即数都相同，
+#如果不设置这个值，则系统根据时间来自己选择这个值，此时每次生成的随机数因时间差异而不同。
+#伪随机数？
+random.seed(0)
+import string
+
+N=1000
+def rands(n)
+	#choices是字符串的一个组成？
+	choices=string.ascii_uppercase
+	#怎么就连接起来了？
+	return ''.join([random.choice(choices) for _ in xrange(n)])
+#生成5位数的代码？
+tickers=np.array([rands(5) for _ in xrange(N)])
+
+2.创建一个含有3列的DF来承载数据
+M=500
+df=DataFrame({'Momentum':np.random.randn(M)/200 + 0.03,
+				'Value':np.random.randn(M)/200 + 0.08,
+				'ShortInterest':np.random.randn(M) /200 - 0.02},
+				index=tickers[:M])
+
+3.创建行业分类
+ind_names=np.array(['FINANCE','TECH'])
+#从0到N的一个序列，这个len（ind_names）是怎么回事？
+sampler=np.random.randint(0,len(ind_names),N)
+#生成Series，ind_names里的sampler列？index是股票名，这个列名为industry
+industries=Series(ind_names[sampler],index=tickers,name='industry')
+
+4.根据行业进行聚合变换
+by_industry=df.groupby(industries)
+by_industry.mean()
+by_industry.describe()
+
+5.进行行业内标准化处理
+def zscore(group):
+	return (group - group.mean())/group.std()
+df_stand=by_industry.apply(zscore)
+这样处理后，各行业的平均值为0，标准差为1.
+df_stand.groupby(industries).agg(['mean','std'])
+#也可以通过内置变换函数处理
+ind_rank=by_industry.rank(ascending=False)
+ind_rank.groupby(industries).agg(['min','max'])
+
+6.在股票的投资组合定量分析里，排名和标准化是一种很常见的变换运算组合，可以将rank和zscore合在一起完成。
+by_industry.apply(lambda x: zscore(x.rank()))
+
+
+五、分组因子暴露
+将投资组合的持有量和性能（收益与损失）分解为一个或多个表示投资组合权重的因子。比如，beta系数。
+案例是一个三因子的ols组合来恢复
+
+1.设置权重构成及加噪声
+from numpy.random import rand
+fac1,fac2,fac3=np.random.rand(3,1000)#可以一下设置三个随机变量。
+#生成1000个？
+ticker_subset=tickers.take(np.random.permutation(N)[:1000])
+#因子加权及噪声
+port=Series(0.7*fac1 - 1.2*fac2 + 0.3*fac3 + rand(1000),index=ticker_subset)
+factors=DataFrame({'f1':fac1,'f2':fac2,'f3':fac3},index=ticker_subset)
+
+2.因子分析的方式
+#相关性不行
+factors.corrwith(port)
+#标准方式是最小二乘回归，使用pandas.ols
+pd.ols(y=port,x=factors).beta
+
+
+六、动量交易
+股票投资组合的性能可以根据各股的市盈率被划分为四份位，通过pandas.qcut和groupby可以实现。
+1.计算收益率，并将收益率变换为趋势信号
+px=data['Ady Close']
+returns=px.pec_change()
+
+#
+def to_index(rets):
+	index = (1+rets).cumprod()
+	first_loc=max(index.notnull().argmax() - 1,0)
+	index.values[first_loc]=1
+	return index
+
+#5期内的平均？
+def trend_signal(rets,lookback,lag):
+	signal=pd.rolling_sum(rets,lookback,min_periods=lookback - 5)
+	return signal.shift(lag)
+
+2.创建一个每周五动量信号交易策略
+signal = trend_signal(returns,100,3)
+trade_friday=signal.resample('W-FRI').resample('B',fill_method='ffill')
+trade_rets=trade_friday.shift(1)*returns
+
+to_index(trade_rets).plot()
+
+3.观察什么时候表现最好。
+按照不同大小的交易期波幅进行划分，年度标准差是计算波幅的一种方法。
+可以通过计算夏普比率来观察不同波动机制下的风险受益。
+vol=pd.rolling_std(retruns,250,min_periods=200)*np.sqrt(250)
+
+#设置年度默认值为250，收益的均值和标准差之比
+def sharpe(rets,ann=250):
+	retrun rets.mean()/rets.std() * np.sqrt(ann)
+
+#用qcut把vol划分为4等份，并用sharpe聚合
+trade_rets.groupby(pd.qcut(vol,4)).agg(sharpe)
+
+
+七、多只股票动量交易策略的投资组合
+动量策略各种回顾期和持有期的夏普比率热图
+（看不懂，回头再总结。）
+
