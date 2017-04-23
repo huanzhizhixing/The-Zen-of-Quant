@@ -1,0 +1,133 @@
+
+数据聚合与分组运算
+SQL能方便的流行的原因是可对数据进行连接、过滤、转换和聚合，而pandas这方面更强大。
+
+一、基础应用
+groupby技术，split-apply-combine,拆分-应用-合并技术。
+
+1.groupby生成的是中间过程数据，并非一些值。
+df=DataFrame({'key1':['a','a','b','b','a'],'key2':['one','two','one','two','one'],'data1':np.random.randn(5),'data2':np.random.randn(5)})
+grouped=df['data1'].groupby(df['key1'])
+#还可以写成
+grouped=df.groupby('key1')['data1']#这是上面的简写模式
+#这种单独对某一列操作会对大数据表有利。
+
+#按照key1列聚合data1列的值。可以用mean()等函数来看调用过程
+grouped.mean()
+
+2.聚合多个函数，并把mean值生成新的数组
+means = df['data1'].groupby([df['key1'],df['key2']]).mean()
+#简写模式：means = df.groupby(['key1','key2'])['data2']
+#生成的means会有key1和key2两个索引，可以用unstack()将之一转换到列上。
+
+3.还可以按照数组名来
+states = np.array(['Ohio','California','California','Ohio','Ohio'])
+years = np.array([2005,2005,2006,2005,2006])
+df['data1'].groupby([states,years]).mean()
+#奇怪了，这种怎么就能直接跟数据联系上了。
+
+4.其实第一个不要['data1']也行，这样就是所有数据聚合分析
+df.groupby(['key1','key2']).mean()
+
+5.在某列的单独聚合运算时，如对key1值，那么key2就相当于麻烦列，会被排除在外。
+
+6.对列改名，然后对行聚合
+mapping = {'a':'red','b':'red','c':'blue','d':'blue','e':'red','f':'orange'}
+by_colum = people.groupby(mapping,axis=1)
+
+7.使用多种方法，例如字符长度、外导字典聚合
+people.groupby(len).sum()
+key_list = ['one','one','one','two','two']
+people.groupby([len,key_list]).min()
+#由index的本身模长和外导入的key_list来进行聚合分析。
+
+8.根据索引级别分组
+涉及level
+df.groupby(level='cty',axis=1).count()
+
+9.样本分位数quantile
+grouped = df.groupby('key1')
+groupby['data1'].quantitle(0.9)
+
+
+二、高级应用
+
+1.通过定义函数进行分组
+#定义函数后，将其传入aggregete或agg即可
+def peak_to_peak(arr):
+	return arr.max() - arr.min()
+	
+grouped.agg(peak_to_peak)
+#这里可以定义一些复杂的函数，
+
+2.对聚合结果运用describe
+groupec.describe()
+
+3.常用聚合函数
+count:分组中非NA值的数量
+sum，mean，median，std，var，min，max，prod（非NA积），first、last（第一或最后一个非na值）
+#自定义聚合函数比常用的要慢
+
+三、案例
+
+1.餐馆小费
+tips = pd.read_csv('ch08/tips.csv)
+tips['tip_pct']=tips['tip']/tips['total_bill']
+grouped=tips.groupby(['sex','smoker'])
+
+2.#从整个groupby里选择出需要的列
+grouped_pct=grouped['tip_pct']
+grouped_pct.agg(mean)#利用agg来导入均值
+
+3.#求多个值
+grouped_pct.agg(['mean','std','peak_to_peak'])
+
+4.#把后面的值名称给前者。
+grouped_pct.agg([('foo','mean'),('bar',np.std)])
+#或者写成grouped_pct.agg({'foo':mean,'bar':'np.std')#这里挺奇怪，变成由后面的传导给前面的了。
+
+5.#对多列运用多个函数
+functions= ['count','mean','max']
+result=grouped['tip_pct','total_bill'].agg(functions)
+
+6.无索引聚合as_index=False
+tips.groupby(['sex','smoker'],as_index=False).mean()
+
+
+四、transform及apply的用法
+
+1.为DataFrame添加一个储存平均值的列
+k1_means=df.groupby('key1').mean().add_prefix('mean_')
+pd.merge(df,k1_means,left_on='key1',right_index=True)
+
+2.people.groupby(key).transform(np.mean)
+
+3.transform会将一个函数应用到各个分组，然后将结果放置到适当的位置上。如果各分组产生的是一个标量值，则该值会被广播出去。
+def demean(arr):
+	return arr - arr.mean()	
+demeaned = people.groupby(key).transform(demean)
+
+4.apply,一般性的‘拆分-应用-合并’
+def top(df,n=5,column='tip_pct'):
+	return df.sort_index(by=column)[-n:]
+top(tips,n=6)
+tips.groupby('smoker').apply(top)
+tips.groupby(['smoker','day']).apply(top,n=1,column='total_bill')
+
+5.禁止分组索引键
+进行groupby，会将分组键和原始对象的索引键共同构成结果对象中的层次化索引，这时需要用group_keys=False
+tips.groupby('smoker',group_keys=False).apply(top)
+
+6.分位数和桶分析(???)
+frame=DataFrame({'data1':np.random.randn(10000),'data2':np.random.randn(10000)})
+factor=pd.cut(frame.data1)
+
+
+五、透视表和交叉表
+透视表根据一个或多个键对数据进行聚合，并根据行和列上的分组键将数据分配到各个矩阵区域中。
+pivot_table,pandas.pivot_table
+tips.pivot_table(rows=['sex','smoker'])
+tips.pivot_table(['tip_pct','size'],rows=['sex','day'],cols='smoker',margins=True)
+#首先指定聚合的数据tip_pct和size，行是sex和day，列是smoker，最终是否有全集为是。
+#aggfunc=len，也是pivot_table中的一部分，表示可以用模长来聚合。
+
